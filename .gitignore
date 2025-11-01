@@ -1,16 +1,2 @@
-# General
-.DS_Store
-*.log
-*.tmp
-
-# Editors/IDE
-.vscode/
-.idea/
-
-# Node
 node_modules/
-dist/
-
-# Python
-__pycache__/
-*.pyc
+.env
