@@ -1,0 +1,43 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: webhook_db
+    environment:
+      POSTGRES_USER: webhook
+      POSTGRES_PASSWORD: webhook
+      POSTGRES_DB: webhook
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: webhook_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: webhook_web
+    depends_on:
+      - db
+      - redis
+    environment:
+      DATABASE_URL: postgresql://webhook:webhook@db:5432/webhook
+      REDIS_URL: redis://redis:6379/0
+      NODE_ENV: development
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+
+volumes:
+  db_data:
+  redis_data:
