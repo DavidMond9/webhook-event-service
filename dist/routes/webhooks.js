@@ -36,4 +36,16 @@ router.post('/:clientId/:sourceSystem', express.json({ limit: '2mb' }), async (r
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+router.get('/redis/test', async (_req, res) => {
+    try {
+        const key = 'test:key';
+        await (await import('../db/redisClient.js')).default.set(key, 'Webhook Service Active');
+        const value = await (await import('../db/redisClient.js')).default.get(key);
+        res.json({ key, value });
+    }
+    catch (err) {
+        console.error('Redis test error:', err);
+        res.status(500).json({ error: 'Redis test failed' });
+    }
+});
 export default router;
