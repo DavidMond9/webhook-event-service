@@ -34,6 +34,8 @@ services:
       DATABASE_URL: postgresql://webhook:webhook@db:5432/webhook
       REDIS_URL: redis://redis:6379/0
       NODE_ENV: development
+      WEBHOOK_SECRET: test-secret
+
     ports:
       - "8080:8080"
     volumes:
