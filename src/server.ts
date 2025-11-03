@@ -1,5 +1,6 @@
 import express from 'express';
 import webhookRouter from './routes/webhooks.js';
+import { startWorker } from './queue/worker.js';
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -11,4 +12,5 @@ app.get('/', (_, res) => {
 app.use('/webhooks', webhookRouter);
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  startWorker();
 });

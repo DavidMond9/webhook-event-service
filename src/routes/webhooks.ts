@@ -1,6 +1,8 @@
 import express, { Request, Response } from 'express';
 import crypto from 'crypto';
 import { query } from '../db/pool.js';
+import { enqueueJob } from '../queue/worker.js';
+import { randomUUID } from 'crypto';
 
 const router = express.Router();
 
@@ -58,5 +60,26 @@ router.get('/redis/test', async (_req, res) => {
     res.status(500).json({ error: 'Redis test failed' });
   }
 });
+
+router.get('/test-queue', async (_req, res) => {
+  try {
+    const job = {
+      id: randomUUID(),
+      clientId: 'clientA',
+      sourceSystem: 'propertysysA',
+      payload: { test: 'Hello Queue!' },
+      attempt: 0,
+    };
+
+    // don’t wait on Redis response too long
+    enqueueJob(job).catch(err => console.error('Enqueue failed:', err));
+
+    res.status(200).json({ message: 'Job enqueued', job });
+  } catch (err) {
+    console.error('Test queue error:', err);
+    res.status(500).json({ error: 'Failed to enqueue job' });
+  }
+});
+
 
 export default router;

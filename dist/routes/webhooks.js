@@ -1,6 +1,8 @@
 import express from 'express';
 import crypto from 'crypto';
 import { query } from '../db/pool.js';
+import { enqueueJob } from '../queue/worker.js';
+import { randomUUID } from 'crypto';
 const router = express.Router();
 /**
  * Compute HMAC SHA256 signature for body using client secret
@@ -46,6 +48,24 @@ router.get('/redis/test', async (_req, res) => {
     catch (err) {
         console.error('Redis test error:', err);
         res.status(500).json({ error: 'Redis test failed' });
+    }
+});
+router.get('/test-queue', async (_req, res) => {
+    try {
+        const job = {
+            id: randomUUID(),
+            clientId: 'clientA',
+            sourceSystem: 'propertysysA',
+            payload: { test: 'Hello Queue!' },
+            attempt: 0,
+        };
+        // don’t wait on Redis response too long
+        enqueueJob(job).catch(err => console.error('Enqueue failed:', err));
+        res.status(200).json({ message: 'Job enqueued', job });
+    }
+    catch (err) {
+        console.error('Test queue error:', err);
+        res.status(500).json({ error: 'Failed to enqueue job' });
     }
 });
 export default router;
