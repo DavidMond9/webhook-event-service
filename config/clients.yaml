@@ -1,5 +1,12 @@
 clients:
   - id: clientA
+    # clientA uses propertysysA source system
+    # When sourceSystem is 'propertysysA' and no transformations are defined,
+    # the system uses the built-in PropertySystemTransformation which transforms:
+    # unit_id -> unitNumber, buildingId
+    # tenant_name -> resident.fullName
+    # lease_start -> resident.leaseStartDate (ISO format)
+    # monthly_rent -> resident.rentAmount
     destinations:
       - type: http
         url: http://web:8080/webhooks/mock-receiver
@@ -7,6 +14,16 @@ clients:
         table: property_updates
         schema: client_a
   - id: clientB
+    # clientB has a different, simpler transformation
+    transformations:
+      - source: unit_id
+        target: unitId
+      - source: tenant_name
+        target: tenantName
+      - source: lease_start
+        target: leaseStart
+      - source: monthly_rent
+        target: monthlyRent
     destinations:
       - type: http
         url: http://web:8080/webhooks/mock-receiver
