@@ -17,7 +17,6 @@ router.post('/:clientId/:sourceSystem', async (req: Request, res: Response) => {
   console.log('🟢 Incoming webhook reached route');
   const { clientId, sourceSystem } = req.params;
   const signatureHeader = req.header('X-Webhook-Signature') || '';
-  console.log('🔹 Received header X-Webhook-Signature:', signatureHeader);
 
 
   // Use the exact raw body bytes captured by body-parser verify
@@ -29,14 +28,7 @@ router.post('/:clientId/:sourceSystem', async (req: Request, res: Response) => {
 
   // Validate signature
   const expectedSig = computeSignature(secret, rawBody);
-  console.log('EXPECTED SIG:', expectedSig);
-  console.log('RECEIVED  SIG:', signatureHeader);
-  console.log('RAW BODY USED:', rawBody);
   if (signatureHeader !== expectedSig) {
-    console.warn('⚠️ Invalid signature detected');
-    console.warn('Provided:', signatureHeader);
-    console.warn('Expected:', expectedSig);
-    console.warn('Raw body string used for HMAC:', rawBody);
     return res.status(401).json({ error: 'Invalid signature' });
   }
 
