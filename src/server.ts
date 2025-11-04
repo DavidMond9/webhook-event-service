@@ -1,5 +1,6 @@
 import express from 'express';
 import webhookRouter from './routes/webhooks.js';
+import adminRouter from './routes/admin.js';
 import { startWorker } from './queue/worker.js';
 
 // Force unbuffered output for real-time logs in Docker
@@ -20,6 +21,7 @@ app.get('/', (_, res) => {
 });
 
 app.use('/webhooks', webhookRouter);
+app.use('/admin', adminRouter);
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   startWorker().catch((err) => {
