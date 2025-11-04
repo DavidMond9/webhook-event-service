@@ -9,4 +9,7 @@ COPY . .
 RUN npm run build || npx tsc
 
 EXPOSE 8080
-CMD ["node", "dist/server.js"]
+ENV NODE_ENV=development
+# Force unbuffered output
+ENV NODE_NO_WARNINGS=1
+CMD ["node", "--trace-warnings", "--no-warnings", "dist/server.js"]

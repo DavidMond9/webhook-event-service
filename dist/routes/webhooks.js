@@ -59,13 +59,25 @@ router.get('/test-queue', async (_req, res) => {
             payload: { test: 'Hello Queue!' },
             attempt: 0,
         };
-        // don’t wait on Redis response too long
-        enqueueJob(job).catch(err => console.error('Enqueue failed:', err));
+        // don't wait on Redis response too long
+        enqueueJob(job).catch(err => {
+            console.error('Enqueue failed:', err);
+            process.stderr.write(`Enqueue failed: ${err.message}\n`);
+        });
         res.status(200).json({ message: 'Job enqueued', job });
     }
     catch (err) {
         console.error('Test queue error:', err);
         res.status(500).json({ error: 'Failed to enqueue job' });
     }
+});
+/**
+ * Mock receiver endpoint (acts like a client webhook URL)
+ * Verify the worker's delivery step inside Docker.
+ */
+router.post('/mock-receiver', express.json(), (req, res) => {
+    console.log('📥 Mock receiver got payload:', req.body);
+    process.stdout.write(`📥 Mock receiver got payload: ${JSON.stringify(req.body)}\n`);
+    res.status(200).json({ received: true });
 });
 export default router;

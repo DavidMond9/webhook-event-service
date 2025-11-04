@@ -39,7 +39,9 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - .:/app
+      - ./dist:/app/dist
+    stdin_open: true
+    tty: true
 
 volumes:
   db_data:
