@@ -1,1 +1,15 @@
-clients: []
+clients:
+  - id: clientA
+    destinations:
+      - type: http
+        url: http://web:8080/webhooks/mock-receiver
+      - type: postgres
+        table: property_updates
+        schema: client_a
+  - id: clientB
+    destinations:
+      - type: http
+        url: http://web:8080/webhooks/mock-receiver
+      - type: postgres
+        table: property_updates
+        schema: client_b

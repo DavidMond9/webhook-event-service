@@ -40,6 +40,7 @@ services:
       - "8080:8080"
     volumes:
       - ./dist:/app/dist
+      - ./config:/app/config:ro
     stdin_open: true
     tty: true
 
