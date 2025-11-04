@@ -35,18 +35,38 @@ async function deliver(job, transformedPayload) {
         throw new Error(`No destinations configured for client ${job.clientId}`);
     }
     for (const destination of clientConfig.destinations) {
-        if (destination.type === 'http' && destination.url) {
-            const res = await fetch(destination.url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(transformedPayload),
-            });
-            if (!res.ok) {
-                throw new Error(`HTTP delivery failed with ${res.status}`);
+        let deliveryError = null;
+        let deliverySuccess = false;
+        try {
+            if (destination.type === 'http' && destination.url) {
+                const res = await fetch(destination.url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(transformedPayload),
+                });
+                if (!res.ok) {
+                    throw new Error(`HTTP delivery failed with ${res.status}`);
+                }
+                deliverySuccess = true;
+            }
+            else if (destination.type === 'postgres') {
+                await deliverToPostgres(job, transformedPayload, destination);
+                deliverySuccess = true;
+            }
+            if (job.eventId && deliverySuccess) {
+                await query(`INSERT INTO event_deliveries (event_id, destination_type, destination, status, attempts)
+                     VALUES ($1, $2, $3, 'SUCCESS', 1)
+                     ON CONFLICT DO NOTHING`, [job.eventId, destination.type, destination.url || `${destination.schema || 'public'}.${destination.table || 'property_updates'}`]);
             }
         }
-        else if (destination.type === 'postgres') {
-            await deliverToPostgres(job, transformedPayload, destination);
+        catch (err) {
+            deliveryError = err;
+            if (job.eventId) {
+                await query(`INSERT INTO event_deliveries (event_id, destination_type, destination, status, attempts, last_error)
+                     VALUES ($1, $2, $3, 'FAILED', 1, $4)
+                     ON CONFLICT DO NOTHING`, [job.eventId, destination.type, destination.url || `${destination.schema || 'public'}.${destination.table || 'property_updates'}`, err.message]);
+            }
+            throw err;
         }
     }
 }

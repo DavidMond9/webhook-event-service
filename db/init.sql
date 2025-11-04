@@ -27,5 +27,6 @@ CREATE TABLE IF NOT EXISTS public.event_deliveries (
     status TEXT NOT NULL, -- 'SUCCESS' or 'FAILED'
     attempts INT NOT NULL DEFAULT 0,
     last_error TEXT,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(event_id, destination_type, destination)
 );
