@@ -1,0 +1,266 @@
+{
+  "info": {
+    "name": "Webhook Event Service Tests",
+    "_postman_id": "b4a8b1ee-431c-4b6f-ae9e-1e2f8e54b78d",
+    "description": "Postman test suite for verifying the Webhook Event Processing Service across all major flows: signature validation, persistence, transformation, retries, and admin visibility.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "ClientA - Valid Event",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "http://localhost:8080/webhooks/clientA/propertysysA",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["webhooks", "clientA", "propertysysA"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"unit_id\": \"bldg-123-unit-45\",\n  \"tenant_name\": \"John Smith\",\n  \"lease_start\": \"2024-01-01\",\n  \"monthly_rent\": 2500\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const secret = 'test-secret';",
+              "const body = pm.request.body.raw;",
+              "const sig = CryptoJS.HmacSHA256(body, secret).toString();",
+              "pm.request.headers.add({ key: 'X-Webhook-Signature', value: sig });",
+              "console.log('Computed HMAC:', sig);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 201', () => pm.response.code === 201);",
+              "pm.test('Contains eventId', () => pm.response.json().hasOwnProperty('eventId'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "ClientA - Invalid Signature",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Webhook-Signature", "value": "invalid123" }
+        ],
+        "url": {
+          "raw": "http://localhost:8080/webhooks/clientA/propertysysA",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["webhooks", "clientA", "propertysysA"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"unit_id\": \"bldg-123-unit-45\",\n  \"tenant_name\": \"John Smith\",\n  \"lease_start\": \"2024-01-01\",\n  \"monthly_rent\": 2500\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Rejects invalid signature', () => pm.response.code === 401);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "ClientA - Duplicate Event",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "http://localhost:8080/webhooks/clientA/propertysysA",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["webhooks", "clientA", "propertysysA"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"unit_id\": \"bldg-123-unit-45\",\n  \"tenant_name\": \"John Smith\",\n  \"lease_start\": \"2024-01-01\",\n  \"monthly_rent\": 2500\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const secret = 'test-secret';",
+              "const body = pm.request.body.raw;",
+              "const sig = CryptoJS.HmacSHA256(body, secret).toString();",
+              "pm.request.headers.add({ key: 'X-Webhook-Signature', value: sig });"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Duplicate returns 200', () => pm.response.code === 200);",
+              "pm.test('Duplicate ignored message', () => pm.response.json().message === 'Duplicate event ignored');"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "ClientB - Custom Transform",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "http://localhost:8080/webhooks/clientB/propertysysA",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["webhooks", "clientB", "propertysysA"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"unit_id\": \"unit-77\",\n  \"tenant_name\": \"Jane Doe\",\n  \"lease_start\": \"2024-07-01\",\n  \"monthly_rent\": 1900\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const secret = 'test-secret';",
+              "const body = pm.request.body.raw;",
+              "const sig = CryptoJS.HmacSHA256(body, secret).toString();",
+              "pm.request.headers.add({ key: 'X-Webhook-Signature', value: sig });"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 201', () => pm.response.code === 201);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "ClientC - No Config Error",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "http://localhost:8080/webhooks/clientC/propertysysA",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["webhooks", "clientC", "propertysysA"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"unit_id\": \"bldg-123-unit-45\",\n  \"tenant_name\": \"John Smith\",\n  \"lease_start\": \"2024-01-01\",\n  \"monthly_rent\": 2500\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const secret = 'test-secret';",
+              "const body = pm.request.body.raw;",
+              "const sig = CryptoJS.HmacSHA256(body, secret).toString();",
+              "pm.request.headers.add({ key: 'X-Webhook-Signature', value: sig });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin - View Last 100 Events",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/admin/clients/clientA/events",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["admin", "clients", "clientA", "events"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.code === 200);",
+              "pm.test('Contains events array', () => {",
+              "  const json = pm.response.json();",
+              "  pm.expect(json).to.have.property('events');",
+              "  pm.expect(Array.isArray(json.events)).to.be.true;",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Redis Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/webhooks/redis/test",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["webhooks", "redis", "test"]
+        }
+      }
+    },
+    {
+      "name": "Test Queue Injection",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/webhooks/test-queue",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["webhooks", "test-queue"]
+        }
+      }
+    }
+  ]
+}
