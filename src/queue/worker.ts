@@ -3,6 +3,7 @@ import fetch from 'node-fetch';
 
 interface Job {
     id: string;
+    eventId?: number;
     clientId: string;
     sourceSystem: string;
     payload: any;

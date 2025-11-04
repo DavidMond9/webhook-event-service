@@ -31,6 +31,18 @@ router.post('/:clientId/:sourceSystem', express.json({ limit: '2mb' }), async (r
             return res.status(200).json({ message: 'Duplicate event ignored' });
         }
         const eventId = result.rows[0].id;
+        // Enqueue event for processing
+        const job = {
+            id: randomUUID(),
+            eventId: eventId,
+            clientId,
+            sourceSystem,
+            payload: req.body,
+            attempt: 0,
+        };
+        enqueueJob(job).catch(err => {
+            console.error('Failed to enqueue event:', err);
+        });
         res.status(201).json({ eventId });
     }
     catch (err) {
