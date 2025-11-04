@@ -13,15 +13,30 @@ function computeSignature(secret: string, payload: string) {
   return crypto.createHmac('sha256', secret).update(payload).digest('hex');
 }
 
-router.post('/:clientId/:sourceSystem', express.json({ limit: '2mb' }), async (req: Request, res: Response) => {
+router.post('/:clientId/:sourceSystem', async (req: Request, res: Response) => {
+  console.log('🟢 Incoming webhook reached route');
   const { clientId, sourceSystem } = req.params;
   const signatureHeader = req.header('X-Webhook-Signature') || '';
-  const rawBody = JSON.stringify(req.body);
+  console.log('🔹 Received header X-Webhook-Signature:', signatureHeader);
+
+
+  // Use the exact raw body bytes captured by body-parser verify
+  const rawBody = (req as any).rawBody
+    ? (req as any).rawBody.toString('utf8')
+    : JSON.stringify(req.body);
+
   const secret = process.env.WEBHOOK_SECRET || 'test-secret';
 
   // Validate signature
   const expectedSig = computeSignature(secret, rawBody);
+  console.log('EXPECTED SIG:', expectedSig);
+  console.log('RECEIVED  SIG:', signatureHeader);
+  console.log('RAW BODY USED:', rawBody);
   if (signatureHeader !== expectedSig) {
+    console.warn('⚠️ Invalid signature detected');
+    console.warn('Provided:', signatureHeader);
+    console.warn('Expected:', expectedSig);
+    console.warn('Raw body string used for HMAC:', rawBody);
     return res.status(401).json({ error: 'Invalid signature' });
   }
 
@@ -42,18 +57,18 @@ router.post('/:clientId/:sourceSystem', express.json({ limit: '2mb' }), async (r
     }
 
     const eventId = result.rows[0].id;
-    
+
     // Enqueue event for processing
     const job = {
       id: randomUUID(),
-      eventId: eventId,
+      eventId,
       clientId,
       sourceSystem,
       payload: req.body,
       attempt: 0,
     };
-    
-    enqueueJob(job).catch(err => {
+
+    enqueueJob(job).catch((err) => {
       console.error('Failed to enqueue event:', err);
     });
 
@@ -64,6 +79,9 @@ router.post('/:clientId/:sourceSystem', express.json({ limit: '2mb' }), async (r
   }
 });
 
+/**
+ * Utility routes (optional)
+ */
 router.get('/redis/test', async (_req, res) => {
   try {
     const key = 'test:key';
@@ -85,13 +103,10 @@ router.get('/test-queue', async (_req, res) => {
       payload: { test: 'Hello Queue!' },
       attempt: 0,
     };
-
-    // don't wait on Redis response too long
-    enqueueJob(job).catch(err => {
+    enqueueJob(job).catch((err) => {
       console.error('Enqueue failed:', err);
       process.stderr.write(`Enqueue failed: ${err.message}\n`);
     });
-
     res.status(200).json({ message: 'Job enqueued', job });
   } catch (err) {
     console.error('Test queue error:', err);
@@ -101,7 +116,6 @@ router.get('/test-queue', async (_req, res) => {
 
 /**
  * Mock receiver endpoint (acts like a client webhook URL)
- * Verify the worker's delivery step inside Docker.
  */
 router.post('/mock-receiver', express.json(), (req, res) => {
   console.log('📥 Mock receiver got payload:', req.body);

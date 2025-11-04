@@ -1,18 +1,24 @@
+process.stdin.resume();
+try {
+    // Ensure logs are flushed immediately (no buffering)
+    process.stdout._handle?.setBlocking?.(true);
+    process.stderr._handle?.setBlocking?.(true);
+}
+catch {
+    // fallback if not supported
+}
 import express from 'express';
 import webhookRouter from './routes/webhooks.js';
 import adminRouter from './routes/admin.js';
 import { startWorker } from './queue/worker.js';
-// Force unbuffered output for real-time logs in Docker
-process.stdout.write = process.stdout.write.bind(process.stdout);
-process.stderr.write = process.stderr.write.bind(process.stderr);
-if (process.stdout.isTTY) {
-    process.stdout.setEncoding('utf8');
-}
-if (process.stderr.isTTY) {
-    process.stderr.setEncoding('utf8');
-}
+// --- Capture raw body for HMAC verification ---
+const rawBodySaver = (_req, _res, buf) => {
+    _req.rawBody = buf; // store exact bytes for signature check
+};
 const app = express();
 const PORT = process.env.PORT || 8080;
+// Use express for raw body saver
+app.use(express.json({ limit: '2mb', verify: rawBodySaver }));
 app.get('/', (_, res) => {
     res.send('Webhook Event Processing Service running');
 });

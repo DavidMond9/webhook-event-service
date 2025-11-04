@@ -1,11 +1,12 @@
 clients:
   - id: clientA
+    secret: test-secret
     # clientA uses propertysysA source system
     # When sourceSystem is 'propertysysA' and no transformations are defined,
     # the system uses the built-in PropertySystemTransformation which transforms:
-    # unit_id -> unitNumber, buildingId
+    # unit_id -> (unitNumber, buildingId) stored as a tuple
     # tenant_name -> resident.fullName
-    # lease_start -> resident.leaseStartDate (ISO format)
+    # lease_start -> resident.leaseStartDate YYYY-MM-DD
     # monthly_rent -> resident.rentAmount
     destinations:
       - type: http
@@ -13,7 +14,9 @@ clients:
       - type: postgres
         table: property_updates
         schema: client_a
+
   - id: clientB
+    secret: test-secret
     # clientB has a different, simpler transformation
     transformations:
       - source: unit_id
